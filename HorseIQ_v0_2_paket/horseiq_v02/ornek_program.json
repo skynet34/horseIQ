@@ -1,0 +1,11 @@
+{
+  "meetings": [
+    {"date": "2026-10-26", "track": "Örnek Hipodrom", "races": [
+      {"number": 1, "time": "14:00", "surface": "Çim", "distance": 1400, "horses": [
+        {"id":"at-101", "number":1, "name":"ÖRNEK AT A"},
+        {"id":"at-102", "number":2, "name":"ÖRNEK AT B"},
+        {"id":"at-103", "number":3, "name":"ÖRNEK AT C"}
+      ]}
+    ]}
+  ]
+}

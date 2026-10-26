@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+backend/data/
+backend/.env
+# Node
+node_modules/
+frontend/dist/
+# Local
+.env
+*.db
+*.log
+
+# Manually saved source pages (not redistributed)
+data_inbox/*.html
+data_inbox/*.htm
+data_inbox/*.json
+data_inbox/*_files/

@@ -1,0 +1,8 @@
+{
+  "performances": [
+    {"horseId":"at-101", "date":"2026-09-08", "track":"Örnek Hipodrom", "surface":"Çim", "distance":1400, "early":14.2, "mid":15.1, "finish":15.7},
+    {"horseId":"at-101", "date":"2026-07-08", "track":"Örnek Hipodrom", "surface":"Çim", "distance":1200, "early":14.5, "mid":15.0, "finish":15.5},
+    {"horseId":"at-102", "date":"2026-09-11", "track":"Örnek Hipodrom", "surface":"Çim", "distance":1400, "early":15.3, "mid":15.0, "finish":14.0},
+    {"horseId":"at-103", "date":"2026-08-20", "track":"Örnek Hipodrom", "surface":"Çim", "distance":1600, "early":13.8, "mid":14.8, "finish":16.0}
+  ]
+}
