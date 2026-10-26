@@ -6,7 +6,7 @@ TJK yarış programlarındaki atları geçmiş performanslarına göre **birbiri
 
 > Durum ve ilerleme raporu: [docs/RAPOR.md](docs/RAPOR.md) · Veri erişimi: [docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) · Mimari: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-⚠️ **Şu an veritabanında gerçek TJK verisi yoktur.** tjk.org ve accurace.net otomatik erişime (robots.txt) izin vermiyor; HorseIQ'nun TJK veri servisi anahtarı (authKey) ve Accurace lisansı yok. Uygulama gerçek veri içe aktarıldığında onunla çalışır; o zamana kadar yalnızca açıkça işaretlenmiş **DEMO** (sentetik) dünya ile denenebilir. Gerçek ve demo veri hiçbir zaman karışmaz.
+⚠️ **Gerçek veri yalnızca elle indirilen dosyalardan gelir** (26 Ekim 2026: 01.10.2026 Kocaeli günü + 1. koşunun Accurace raporları denendi). tjk.org ve accurace.net otomatik erişime (robots.txt) izin vermiyor; HorseIQ'nun TJK veri servisi anahtarı (authKey) ve Accurace lisansı yok. Uygulama gerçek veri içe aktarıldığında onunla çalışır; o zamana kadar yalnızca açıkça işaretlenmiş **DEMO** (sentetik) dünya ile denenebilir. Gerçek ve demo veri hiçbir zaman karışmaz.
 
 ## Yapı
 
@@ -47,6 +47,9 @@ Testler: `cd backend && .venv/Scripts/python -m pytest -q`
 
 | Yol | Komut | Durum |
 |---|---|---|
+| **TJK "CSV Sonuçlar" (elle indirilen)** | `python -m horseiq.cli import-tjk-csv ../data_inbox/01.10.2026-Kocaeli-GunlukYarisSonuclari-TR.csv` | **Çalışıyor** — gerçek dosyayla doğrulandı |
+| **TJK at koşu geçmişi (HorseIQ butonu)** | `python -m horseiq.cli import-tjk-horse %USERPROFILE%\Downloads` | Hazır — kurulum: `tools/tjk-kit/install.html` |
+| **Accurace "Raporu indir" PDF'leri** | `python -m horseiq.cli import-accurace-pdf ../data_inbox/2026-10-01-kocaeli-1-summary.pdf ../data_inbox/2026-10-01-kocaeli-1.pdf` | **Çalışıyor** — OCR (Tesseract gerekir), gerçek raporla doğrulandı |
 | TJK veri servisi (authKey) | `python -m horseiq.cli fetch-tjk --backfill-from 2023-10-27 --to 2026-10-25` | Anahtar gelince çalışır (en yeni günden geriye) |
 | TJK JSON dışa aktarımı | `python -m horseiq.cli import-tjk-json dosya.json --results` | Hazır |
 | Tarayıcıdan kaydedilen TJK sonuç sayfası | `python -m horseiq.cli import-tjk-html sayfa.html --date 2025-06-25 --track İstanbul` | Hazır, gerçek sayfa ile doğrulanmalı |

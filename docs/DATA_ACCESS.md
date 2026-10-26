@@ -22,7 +22,44 @@ Geliştirme sırasında robots.txt okunmadan önce tjk.org'dan **2 sayfa** (ana 
 
 Servis alan adları `bilaleren/tjk-api` (MIT) kaynak kodundan doğrulandı: `program`, `sonuclar`, `jokey-degisiklikleri`, `at-detay`, `hipodromlar`; tarih `dd/MM/yyyy`, hipodrom `hipodromkey`. Alanlar: `yarislar[].kosular[].atlar[]` → `KEY, NO, AD, YAS, START, SONUC, DERECE, FARK, KILO, JOKEYADI, KOSMAZ, BABA, ANNE ...`.
 
-## Elle kaydedilen TJK sayfaları (bugün kullanılabilir, küçük ölçek)
+## Elle indirilen dosyalar (26 Ekim 2026'dan itibaren ana yol)
+
+TJK ve Accurace, sayfalarında herkesin indirebileceği dışa aktarımlar sunuyor. HorseIQ bu siteleri
+taramaz; dosyaları bir kişi kendi tarayıcısından indirir ve `data_inbox/` klasörüne koyar.
+
+**TJK "CSV Sonuçlar"** (`collectors/tjk/csv_results.py`, `import-tjk-csv`). Bir gün + bir hipodrom = bir dosya.
+Doğrulanmış biçim (01.10.2026 Kocaeli, 10 koşu, 106 at): `;` ayraçlı, UTF-8 BOM. Dikkat edilecekler:
+- **"At No" sütunu bitiriş sırasıdır, program numarası değil.** CSV'de program no ve TJK at kimliği yok;
+  kazananın program no'su GANYAN satırından, diğerleri Accurace raporundan gelir.
+- At eşleştirme isim + doğum yılı + baba + anne ile yapılır (kimlik yok). Aynı isim farklı pedigri → ayrı at.
+- At ismine eklenen ekipman kodları (KG, DB, SK, K, GKR …) atılır; "57 +0.60" = 57,60 kg (fazla kilo);
+  "11 - DS" = 11. kulvar, dış start; "Derecesiz" → DNF; AGF ve ganyan şimdilik saklanmıyor.
+
+**TJK at koşu geçmişi** (`tools/tjk-kit`, `collectors/tjk/horse_history.py`, `import-tjk-horse`). At sayfasında
+(AtKosuBilgileri) yer imi butonuna basılınca ekrandaki tablo JSON olarak iner. Buton sunucuya istek atmaz.
+- Her satır, yalnızca bu atın bilindiği *kısmi* bir koşu olur: diğer atlar koşmaz işaretlenmez, CSV'den gelen
+  koşu bilgileri (sınıf, pist durumu …) ezilmez; aynı koşu CSV'den de geldiyse at o koşuya eklenir.
+- At, TJK at kimliğiyle (AtId) kaydedilir; CSV'den isimle gelen aynı at (isim + doğum yılı + baba + anne) bu kimliği alır.
+- Kısmi koşularda saha büyüklüğü bilinmez; form motorunun "rakip/sonuç" bileşeni bu koşuları atlar.
+- Taklit sayfayla test edildi; gerçek TJK sayfasıyla ilk kullanımda sütun/başlık eşlemesi kontrol edilmeli.
+
+**Accurace "Raporu indir" PDF'leri** (`collectors/accurace/pdf_report.py`, `import-accurace-pdf`).
+PDF'in içinde tek bir ekran görüntüsü var (metin yok), bu yüzden Tesseract OCR ile okunur.
+- *summary* raporu: her atın 400 m, 600 m, …, bitişteki kümülatif süresi ve o noktadaki sırası → `sectional_times`.
+- *detay* raporu: seçili bölüm (varsayılan son 100 m) süresi, bariyere uzaklık, bölüm hızı; tüm koşu için
+  koşulan toplam mesafe (fazladan yol), ortalama hız, kazanana göre mesafe farkı → `horse_performances`
+  (bariyer/delta/fark `extra` alanında). Maksimum hız raporda 0,0 göründüğü için kaydedilmiyor.
+- Her sayı çapraz kontrol edilir (ara dereceler artmalı, sıra süreyle uyumlu olmalı, başlıktaki lider
+  süresi = en iyi süre, bölüm süresi = ara derece farkı, ortalama hız = mesafe / süre, iki raporun
+  bitiriş süresi aynı). Tutmayan değer atılır ve raporlanır; tahmin edilmez.
+- Program numarası rozetten OCR ile, olmazsa rozet renginden okunur (renk eşlemesi 1–8, 10, 11 için var).
+- Accurace bitiriş süreleri resmî dereceden ~0,25 sn farklıdır (Accurace hasa bezi, TJK foto finiş
+  burun referansı alıyor). Resmî derece her zaman TJK CSV'den gelir.
+
+Ölçek: bir koşu için 2 PDF, bir gün için hipodrom başına 1 CSV. Geçmiş arşivi bu yolla toplamak zahmetli;
+TJK veri servisi anahtarı hâlâ en iyi uzun vadeli çözüm.
+
+## Elle kaydedilen TJK sayfaları (küçük ölçek)
 
 Bir kişi kendi tarayıcısında "Günlük Yarış Sonuçları" sayfasını açıp hipodromu seçer, sonuç tabloları görünür hâldeyken **Ctrl+S** ile kaydeder:
 

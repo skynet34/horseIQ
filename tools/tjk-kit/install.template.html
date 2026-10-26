@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HorseIQ TJK Kiti</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#5f5d58; --line:#dedbd3; --accent:#8a4b16; --ok:#1b6e3c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#191917; --card:#22221f; --ink:#ecebe6; --muted:#a4a29a; --line:#3a3934; --accent:#e09a5a; --ok:#6ccf93; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .btn { display:inline-block; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600;
+         text-decoration: none; cursor: grab; user-select: none; }
+  ol { padding-left: 22px; margin: 8px 0 0; }
+  li { margin: 6px 0; }
+  code, pre { font: 13px/1.5 ui-monospace, Consolas, monospace; }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 8px 0 0; }
+  .note { color: var(--muted); font-size: 14px; }
+  h2 { font-size: 18px; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>HorseIQ TJK Kiti</h1>
+  <p class="sub">TJK'da açtığın sayfadaki koşu geçmişini tek tıkla HorseIQ dosyasına çevirir.</p>
+
+  <div class="card">
+    <h2>1 · Butonu yer imlerine ekle</h2>
+    <p>Aşağıdaki butonu fareyle tutup Chrome'un yer imi çubuğuna sürükle (çubuk görünmüyorsa <b>Ctrl+Shift+B</b>).</p>
+    <p><a class="btn" href="{{BOOKMARKLET}}" onclick="alert('Bu butonu tıklamak yerine yer imi çubuğuna sürükle.'); return false;">HorseIQ kaydet</a></p>
+  </div>
+
+  <div class="card">
+    <h2>2 · Atları kaydet</h2>
+    <ol>
+      <li><b>Günlük Yarış Sonuçları</b> sayfasında hipodromu seç ve <b>HorseIQ kaydet</b>'e bas: sağda her koşunun atları, at sayfalarının bağlantılarıyla listelenir.</li>
+      <li>Bir atın adına tıkla, at sayfası yeni sekmede açılır. <b>Tüm Yıllar</b> seçili olsun (filtre yok).</li>
+      <li>At sayfasında <b>HorseIQ kaydet</b>'e bas: <code>tjk-at-112812-DIREN-KAPORTACI.json</code> gibi bir dosya <b>İndirilenler</b>'e iner.</li>
+    </ol>
+    <p class="note">Buton yalnızca o anda ekranda olan tabloyu okur; TJK'ya kendi başına istek göndermez, sayfa dolaşmaz.</p>
+  </div>
+
+  <div class="card">
+    <h2>3 · HorseIQ'ya aktar</h2>
+    <p>Dosyaları <code>C:\HorseIQ\data_inbox</code> klasörüne taşı (ya da İndirilenler'den doğrudan okut):</p>
+<pre>cd C:\HorseIQ\backend
+.venv\Scripts\python -m horseiq.cli import-tjk-horse ..\data_inbox
+.venv\Scripts\python -m horseiq.cli import-tjk-horse %USERPROFILE%\Downloads</pre>
+    <p class="note">Klasör verilirse içindeki tüm <code>tjk-at-*.json</code> dosyaları okunur. Aynı dosyayı iki kez aktarmak kayıt çoğaltmaz.</p>
+  </div>
+</main>
+</body>
+</html>

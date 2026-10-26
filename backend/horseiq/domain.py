@@ -103,6 +103,9 @@ class RaceRecord:
     conditions: str | None = None
     source_race_id: str | None = None
     has_results: bool = False
+    # partial = only some runners are known (e.g. one horse's history page): the importer adds
+    # them without marking the other runners koşmaz and without overwriting known race fields
+    partial: bool = False
     entries: list[EntryRecord] = field(default_factory=list)
 
 
@@ -142,3 +145,4 @@ class HorseTrackingRecord:
     max_speed_mps: float | None = None
     sectionals: list[SectionalRecord] = field(default_factory=list)
     points: list[TrackingPoint] = field(default_factory=list)
+    extra: dict = field(default_factory=dict)  # source-specific details kept for audit (rail distance, delta ...)

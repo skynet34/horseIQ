@@ -4,6 +4,9 @@
   seed-demo [--from 2024-10-01]          synthetic DEMO world (never mixed with REAL)
   import-tjk-json FILE [--results]       TJK service payload / tjk-api npm export (REAL)
   import-tjk-html FILE --date --track    TJK page saved manually from a browser (REAL)
+  import-tjk-csv FILE [FILE ...]         TJK "CSV Sonuçlar" download (REAL)
+  import-tjk-horse FILE|DIR [...]        horse history saved with the HorseIQ browser button (REAL)
+  import-accurace-pdf PDF [PDF ...]      Accurace "Raporu indir" PDFs (summary + detail) via OCR (REAL)
   fetch-tjk --date D | --backfill-from D --to D   (needs TJK_AUTH_KEY; newest day first)
   import-accurace FILE                   Accurace interchange JSON (REAL tracking)
   backtest --world REAL|DEMO --from D --to D [--mode days|races] [--json out.json]
@@ -67,6 +70,70 @@ def cmd_import_tjk_json(args) -> None:
 def cmd_import_tjk_html(args) -> None:
     races = parse_file(args.file, _d(args.date) if args.date else None, args.track)
     _print_report(Importer(get_engine()).import_races(races, "TJK_HTML", Path(args.file).name))
+
+
+def cmd_import_tjk_csv(args) -> None:
+    from .collectors.tjk.csv_results import SOURCE, parse_file as parse_csv
+
+    imp = Importer(get_engine())
+    for f in args.files:
+        _print_report(imp.import_races(parse_csv(f), SOURCE, Path(f).name))
+
+
+def cmd_import_tjk_horse(args) -> None:
+    from .collectors.tjk.horse_history import SOURCE as HSRC, find_files, parse_file as parse_horse
+
+    files = find_files(args.paths)
+    if not files:
+        sys.exit("tjk-at-*.json dosyası bulunamadı")
+    imp = Importer(get_engine())
+    total = 0
+    for f in files:
+        try:
+            races, issues = parse_horse(f)
+        except Exception as e:  # keep going with the other files
+            print(f"{f.name}: HATA {e}")
+            continue
+        rep = imp.import_races(races, HSRC, f.name)
+        total += rep.results_upserted
+        print(f"{f.name}: {len(races)} koşu, +{rep.races_inserted} yeni koşu, {len(rep.errors)} hata")
+        for i in issues + [f"[{x['level']}] {x['ref']}: {x['message']}" for x in rep.issues if x['level'] == 'error' or 'aday' in x['message']]:
+            print("  ", i)
+    print(f"Toplam {len(files)} dosya, {total} at-koşu kaydı.")
+
+
+def cmd_import_accurace_pdf(args) -> None:
+    from .collectors.accurace.pdf_report import build_interchange, read_pages
+    from .collectors.importer import track_code
+
+    summary, detail = read_pages(args.files)
+    ref = summary or detail
+    eng = get_engine()
+    names: list[str] = []
+    if ref and ref.race_date and ref.track and ref.race_no:
+        with eng.connect() as conn:
+            names = [
+                r.name
+                for r in conn.execute(
+                    select(s.horses.c.name)
+                    .join(s.race_entries, s.race_entries.c.horse_id == s.horses.c.id)
+                    .join(s.races, s.races.c.id == s.race_entries.c.race_id)
+                    .join(s.racetracks, s.racetracks.c.id == s.races.c.racetrack_id)
+                    .where(s.races.c.race_date == ref.race_date, s.races.c.race_no == ref.race_no, s.racetracks.c.code == track_code(ref.track))
+                )
+            ]
+    if not names:
+        print("Uyarı: koşu veritabanında yok; önce o günün TJK CSV dosyasını içe aktarın (import-tjk-csv).")
+    obj, issues = build_interchange(summary, detail, names or None)
+    out = Path(args.json) if args.json else Path(args.files[0]).with_suffix(".accurace.json")
+    out.write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"OCR sonucu: {out}  ({len(obj['horses'])} at)")
+    for i in issues:
+        print("  [ocr]", i)
+    if args.dry_run:
+        return
+    recs = parse_tracking_json(obj)
+    _print_report(import_tracking(eng, recs, ", ".join(Path(f).name for f in args.files)))
 
 
 def cmd_fetch_tjk(args) -> None:
@@ -136,6 +203,20 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--date")
     x.add_argument("--track")
     x.set_defaults(fn=cmd_import_tjk_html)
+
+    x = sub.add_parser("import-tjk-csv")
+    x.add_argument("files", nargs="+")
+    x.set_defaults(fn=cmd_import_tjk_csv)
+
+    x = sub.add_parser("import-tjk-horse")
+    x.add_argument("paths", nargs="+", help="tjk-at-*.json dosyaları veya bunları içeren klasör")
+    x.set_defaults(fn=cmd_import_tjk_horse)
+
+    x = sub.add_parser("import-accurace-pdf")
+    x.add_argument("files", nargs="+", help="summary ve/veya detay PDF (aynı koşu)")
+    x.add_argument("--json", help="OCR çıktısı (varsayılan: ilk PDF yanında .accurace.json)")
+    x.add_argument("--dry-run", action="store_true", help="yalnızca OCR ve JSON, veritabanına yazma")
+    x.set_defaults(fn=cmd_import_accurace_pdf)
 
     x = sub.add_parser("fetch-tjk")
     g = x.add_mutually_exclusive_group(required=True)

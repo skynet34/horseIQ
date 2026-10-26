@@ -16,7 +16,7 @@ from ..db import schema as s
 from ..domain import DataStatus, EntryRecord, RaceRecord, fold
 
 # Source systems that share TJK's horse id namespace.
-ID_NAMESPACE = {"TJK_API": "TJK", "TJK_HTML": "TJK", "TJK_JSON": "TJK"}
+ID_NAMESPACE = {"TJK_API": "TJK", "TJK_HTML": "TJK", "TJK_JSON": "TJK", "TJK_CSV": "TJK", "TJK_HORSE": "TJK"}
 
 TRACK_NAMES = {
     "ISTANBUL": "İstanbul",
@@ -131,7 +131,10 @@ class Importer:
                 report.error(f"{rec.data_status.value} kayıt {existing.data_status} koşu ile karıştırılamaz", ref)
                 return
             race_id = existing.id
-            changes = {k: v for k, v in values.items() if v is not None and v != existing._mapping[k]}
+            if rec.partial:  # never overwrite what a full card (CSV/API) already said
+                changes = {k: v for k, v in values.items() if v is not None and existing._mapping[k] is None}
+            else:
+                changes = {k: v for k, v in values.items() if v is not None and v != existing._mapping[k]}
             if rec.has_results and not existing.has_results:
                 changes["has_results"] = True
             if changes:
@@ -183,7 +186,7 @@ class Importer:
                 )
                 report.results_upserted += 1
 
-        if existing is not None and rec.entries:
+        if existing is not None and rec.entries and not rec.partial:
             # Entries present before but missing from this full card -> koşmaz
             stale = conn.execute(
                 select(s.race_entries.c.id, s.race_entries.c.horse_id, s.horses.c.name)
@@ -236,6 +239,11 @@ class Importer:
         if e.birth_year:
             q = q.where((s.horses.c.birth_year == e.birth_year) | s.horses.c.birth_year.is_(None))
         candidates = conn.execute(q).all()
+        # same name but different pedigree -> a different horse (sources without ids, e.g. TJK CSV)
+        candidates = [
+            c for c in candidates
+            if all(not a or not b or fold(a) == fold(b) for a, b in ((c.sire, e.sire), (c.dam, e.dam)))
+        ]
         if e.source_horse_id:
             # candidates must not already own a different id in this namespace
             free = [
@@ -249,7 +257,9 @@ class Importer:
         horse_id: int
         if len(candidates) == 1:
             horse_id = candidates[0].id
-            if not e.source_horse_id and rec.data_status != DataStatus.DEMO:
+            c = candidates[0]
+            pedigree_ok = bool(c.sire and c.dam and e.sire and e.dam)  # name + sire + dam agree
+            if not e.source_horse_id and rec.data_status != DataStatus.DEMO and not pedigree_ok:
                 report.warn(f"'{e.horse_name}' yalnızca isimle eşleştirildi", ref)
         else:
             if len(candidates) > 1:
