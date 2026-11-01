@@ -1,4 +1,8 @@
-"""Accurace tracking-data integration (prepared, inactive).
+"""Accurace tracking-data integration.
+
+Reports downloaded by hand ("Raporu indir", PDF) are read by `pdf_report` (OCR) into the
+interchange JSON below; the API client stays inactive until Accurace grants access.
+
 
 Status (2026-10-26): no Accurace API key, licence or archive. accurace.net/robots.txt
 disallows /network/*, so race pages are not crawled. This module defines:
@@ -13,13 +17,14 @@ HorseTrackingRecord objects, and everything downstream (form engine, simulator) 
 """
 from __future__ import annotations
 
+import difflib
 from datetime import date
 from typing import Any
 
-from sqlalchemy import Engine, and_, insert, select
+from sqlalchemy import Engine, and_, insert, select, update
 
 from ...db import schema as s
-from ...domain import HorseTrackingRecord, SectionalRecord, TrackingPoint
+from ...domain import HorseTrackingRecord, SectionalRecord, TrackingPoint, fold
 from ..importer import ID_NAMESPACE, ImportReport, track_code
 
 SOURCE = "ACCURACE"
@@ -67,6 +72,7 @@ def parse_tracking_json(obj: dict[str, Any]) -> list[HorseTrackingRecord]:
                 max_speed_mps=h.get("max_speed_mps"),
                 sectionals=[SectionalRecord(**x) for x in h.get("sectionals", [])],
                 points=[TrackingPoint(**x) for x in h.get("points", [])],
+                extra=h.get("extra") or {},
             )
         )
     return out
@@ -95,6 +101,27 @@ def import_tracking(engine: Engine, records: list[HorseTrackingRecord], source_r
                     )
                 ).first()
                 horse_id = row.horse_id if row else None
+            if horse_id is None:
+                # name within this race (TJK CSV has no program numbers): exact fold, then close match
+                entries = conn.execute(
+                    select(s.race_entries.c.id, s.race_entries.c.horse_id, s.race_entries.c.program_no, s.horses.c.name)
+                    .join(s.horses, s.horses.c.id == s.race_entries.c.horse_id)
+                    .where(s.race_entries.c.race_id == race.id)
+                ).all()
+                by_key = {fold(e.name): e for e in entries}
+                hit = by_key.get(fold(r.horse_name))
+                if hit is None:
+                    close = difflib.get_close_matches(fold(r.horse_name), list(by_key), n=1, cutoff=0.85)
+                    hit = by_key[close[0]] if close else None
+                    if hit is not None:
+                        report.warn(f"'{r.horse_name}' benzer isimle '{hit.name}' ile eşleştirildi", ref)
+                if hit is not None:
+                    if r.program_no is not None and hit.program_no is not None and hit.program_no != r.program_no:
+                        report.error(f"Program no uyuşmuyor: TJK {hit.program_no}, Accurace {r.program_no}", ref)
+                        continue
+                    horse_id = hit.horse_id
+                    if r.program_no is not None and hit.program_no is None:
+                        conn.execute(update(s.race_entries).where(s.race_entries.c.id == hit.id).values(program_no=r.program_no))
             if horse_id is None and r.program_no is not None:
                 row = conn.execute(
                     select(s.race_entries.c.horse_id).where(s.race_entries.c.race_id == race.id, s.race_entries.c.program_no == r.program_no)
@@ -123,7 +150,8 @@ def import_tracking(engine: Engine, records: list[HorseTrackingRecord], source_r
             conn.execute(
                 insert(s.horse_performances).values(
                     race_id=race.id, horse_id=horse_id, avg_speed_mps=r.avg_speed_mps, max_speed_mps=r.max_speed_mps,
-                    total_distance_m=r.total_distance_m, early_speed_mps=early, late_speed_mps=late, **audit,
+                    total_distance_m=r.total_distance_m, early_speed_mps=early, late_speed_mps=late,
+                    extra=r.extra or None, **audit,
                 )
             )
             for sec in r.sectionals:

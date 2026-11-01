@@ -17,4 +17,8 @@ frontend/dist/
 data_inbox/*.html
 data_inbox/*.htm
 data_inbox/*.json
+data_inbox/*.csv
+data_inbox/*.pdf
 data_inbox/*_files/
+*.tgz
+.prev.md5

@@ -27,7 +27,7 @@ class Run:
     distance_m: int
     going: str | None
     race_class: str | None
-    field_size: int
+    field_size: int  # 0 = unknown (race only partly imported)
     horse_id: int
     pos: int | None
     time_s: float | None
@@ -137,6 +137,10 @@ def load_runs(engine: Engine, before: date | None = None, world: Literal["REAL",
     out: dict[int, list[Run]] = {}
     for race_id, rws in by_race.items():
         finishers = sorted([x for x in rws if x.finish_pos], key=lambda x: x.finish_pos)
+        # races known only partly (e.g. from single horses' history pages): the field size is unknown
+        # unless the finishing positions we hold are exactly 1..n -> 0 = unknown (opposition skipped)
+        complete = [x.finish_pos for x in finishers] == list(range(1, len(finishers) + 1))
+        field_size = sum(1 for x in rws if x.status != "SCRATCHED") if complete else 0
         winner_time = next((x.finish_time_s for x in finishers if x.finish_pos == 1 and x.finish_time_s), None)
         # derive missing times from cumulative margins when only the winner's time is known
         est: dict[int, float] = {}
@@ -155,7 +159,7 @@ def load_runs(engine: Engine, before: date | None = None, world: Literal["REAL",
                 time_s, ts = est[x.horse_id], "ESTIMATED"
             run = Run(
                 race_id=race_id, race_date=x.race_date, track=x.code, surface=x.surface, distance_m=x.distance_m,
-                going=x.going, race_class=x.race_class, field_size=len(rws), horse_id=x.horse_id,
+                going=x.going, race_class=x.race_class, field_size=field_size, horse_id=x.horse_id,
                 pos=x.finish_pos, time_s=time_s, time_status=ts, winner_time_s=winner_time, weight_kg=x.weight_kg,
                 early_speed=pm.early_speed_mps if pm else None, late_speed=pm.late_speed_mps if pm else None,
                 extra_distance_m=(pm.total_distance_m - x.distance_m) if pm and pm.total_distance_m else None,
